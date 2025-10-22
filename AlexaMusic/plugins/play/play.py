@@ -313,7 +313,7 @@ async def play_commnd_core(
             try:
                 await stream(
                     _,
-                    mystic,
+                                    mystic,
                     user_id,
                     url,
                     chat_id,
@@ -336,7 +336,14 @@ async def play_commnd_core(
                 reply_markup=InlineKeyboardMarkup(buttons),
             )
         slider = True
-        query = message.text.split(None, 1)[1]
+        # Handle case where message.text might be None
+        if message.text:
+            query = message.text.split(None, 1)[1]
+        elif message.caption:
+            query = message.caption.split(None, 1)[1]
+        else:
+            # Fallback: construct query from command list
+            query = " ".join(message.command[1:])
         if "-v" in query:
             query = query.replace("-v", "")
         try:
@@ -598,11 +605,12 @@ async def confirm_channel_play(client, CallbackQuery):
         )        # Now process the play command with admin's user info
         # We'll create a modified message context
         class ModifiedMessage:
-            def __init__(self, original, admin_user, chat_id, stored_command):
+            def __init__(self, original, admin_user, chat_id, stored_command, command_text):
                 # Use CallbackQuery.message.chat if original.chat is None
                 self.chat = original.chat if original.chat else CallbackQuery.message.chat
                 self.id = original.id
-                self.text = original.text
+                # Use stored command_text if original.text is None
+                self.text = command_text if command_text else original.text
                 self.caption = original.caption
                 self.reply_to_message = original.reply_to_message
                 self.from_user = admin_user  # Use admin's info instead of channel
@@ -631,7 +639,8 @@ async def confirm_channel_play(client, CallbackQuery):
             original_msg, 
             CallbackQuery.from_user, 
             chat_id,
-            command_data.get("command_list", [])  # Pass stored command list
+            command_data.get("command_list", []),  # Pass stored command list
+            command_data.get("command_text", "")   # Pass stored command text
         )
         
         # Debug: Print modified message attributes
