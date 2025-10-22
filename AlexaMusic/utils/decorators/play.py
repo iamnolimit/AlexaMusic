@@ -73,18 +73,36 @@ def PlayWrapper(command):
         )
         url = await YouTube.url(message)
         if (
-            audio_telegram is None
+                        audio_telegram is None
             and video_telegram is None
             and url is None
             and len(message.command) < 2
-        ):            
+        ):
             if "stream" in message.command:
                 return await message.reply_text(_["str_1"])
             buttons = botplaylist_markup(_)
             return await message.reply_photo(
-                photo=PLAYLIST_IMG_URL,                caption=_["playlist_1"],
+                photo=PLAYLIST_IMG_URL,
+                caption=_["playlist_1"],
                 reply_markup=InlineKeyboardMarkup(buttons),
-            )        # Check if message is from a channel (sender_chat exists and equals to the chat)
+            )
+        
+        # Determine video and fplay flags BEFORE channel check
+        if message.command[0][0] == "v":
+            video = True
+        else:
+            if message.text and "-v" in message.text:
+                video = True
+            else:
+                video = True if message.command[0][1] == "v" else None
+        if message.command[0][-1] == "e":
+            if not await is_active_chat(chat_id):
+                return await message.reply_text(_["play_18"])
+            fplay = True
+        else:
+            fplay = None
+        
+        # Check if message is from a channel (sender_chat exists and equals to the chat)
         if message.sender_chat:
             # If sender_chat.id == chat.id, it means it's sent from the channel itself
             if message.sender_chat.id == message.chat.id:
@@ -140,8 +158,7 @@ def PlayWrapper(command):
         channel = None
         playmode = await get_playmode(message.chat.id)
         playty = await get_playtype(message.chat.id)
-        
-        # Skip playtype check for channels or if from_user is None
+          # Skip playtype check for channels or if from_user is None
         if message.from_user and playty != "Everyone" and message.from_user.id not in SUDOERS:
             admins = adminlist.get(message.chat.id)
             if not admins:
@@ -149,19 +166,7 @@ def PlayWrapper(command):
             if message.from_user.id not in admins:
                 return await message.reply_text(_["play_4"])
         
-        if message.command[0][0] == "v":
-            video = True
-        else:
-            if message.text and "-v" in message.text:
-                video = True
-            else:
-                video = True if message.command[0][1] == "v" else None
-        if message.command[0][-1] == "e":
-            if not await is_active_chat(chat_id):
-                return await message.reply_text(_["play_18"])
-            fplay = True
-        else:
-            fplay = None
+        # video and fplay already defined above before channel check
 
         if not await is_active_chat(chat_id):
             userbot = await get_assistant(chat_id)
