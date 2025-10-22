@@ -43,20 +43,24 @@ async def varsFunc(client, message):
     ass = "ʏᴇs" if config.AUTO_LEAVING_ASSISTANT == str(True) else "ɴᴏ"
     pvt = "ʏᴇs" if config.PRIVATE_BOT_MODE == str(True) else "ɴᴏ"
     a_sug = "ʏᴇs" if config.AUTO_SUGGESTION_MODE == str(True) else "ɴᴏ"
-    down = "ʏᴇs" if config.AUTO_DOWNLOADS_CLEAR == str(True) else "ɴᴏ"
+    down = "ʏᴇs" if config.AUTO_DOWNLOADS_CLEAR == str(True) else "ɴᴏ"    
     git = f"[ʀᴇᴩᴏ]({config.GITHUB_REPO})" if config.GITHUB_REPO else "ɴᴏ"
+    
     if not config.START_IMG_URL:
         start = "ɴᴏ"
     else:
         start = f"[ɪᴍᴀɢᴇ]({config.START_IMG_URL})"
+    
     if not config.SUPPORT_CHANNEL:
         s_c = "ɴᴏ"
     else:
         s_c = f"[ᴄʜᴀɴɴᴇʟ]({config.SUPPORT_CHANNEL})"
+    
     if not config.SUPPORT_GROUP:
         s_g = "ɴᴏ"
     else:
         s_g = f"[sᴜᴩᴩᴏʀᴛ]({config.SUPPORT_GROUP})"
+    
     if not config.GIT_TOKEN:
         token = "ɴᴏ"
     else:
@@ -65,8 +69,16 @@ async def varsFunc(client, message):
         sotify = "ɴᴏ"
     else:
         sotify = "ʏᴇs"
-    owners = [str(ids) for ids in config.OWNER_ID]
-    owner_id = " ,".join(owners)
+    
+    # Handle OWNER_ID - it can be a single int or list of ints
+    if isinstance(config.OWNER_ID, int):
+        owner_id = str(config.OWNER_ID)
+    elif isinstance(config.OWNER_ID, list):
+        owners = [str(ids) for ids in config.OWNER_ID]
+        owner_id = " ,".join(owners)
+    else:
+        owner_id = str(config.OWNER_ID)
+    
     tg_aud = convert_bytes(config.TG_AUDIO_FILESIZE_LIMIT)
     tg_vid = convert_bytes(config.TG_VIDEO_FILESIZE_LIMIT)
     text = f"""**ᴍᴜsɪᴄ ʙᴏᴛ ᴄᴏɴғɪɢ ᴠᴀʀɪᴀʙʟᴇs:**
