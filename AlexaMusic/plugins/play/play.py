@@ -596,8 +596,7 @@ async def confirm_channel_play(client, CallbackQuery):
             f"👤 Requester: {CallbackQuery.from_user.mention}\n"
             f"🎵 Processing your request..."
         )
-        
-        # Now process the play command with admin's user info
+          # Now process the play command with admin's user info
         # We'll create a modified message context
         class ModifiedMessage:
             def __init__(self, original, admin_user):
@@ -610,14 +609,29 @@ async def confirm_channel_play(client, CallbackQuery):
                 self.from_user = admin_user  # Use admin's info instead of channel
                 self.sender_chat = None  # Remove sender_chat to bypass channel check
                 
+                # Copy other attributes that might be needed
+                if hasattr(original, 'entities'):
+                    self.entities = original.entities
+                else:
+                    self.entities = None
+                    
+                if hasattr(original, 'caption_entities'):
+                    self.caption_entities = original.caption_entities
+                else:
+                    self.caption_entities = None
+                
             async def reply_text(self, *args, **kwargs):
                 return await app.send_message(self.chat.id, *args, **kwargs)
             
             async def reply_photo(self, *args, **kwargs):
                 return await app.send_photo(self.chat.id, *args, **kwargs)
-        
-        # Create modified message with admin info
+          # Create modified message with admin info
         modified_msg = ModifiedMessage(original_msg, CallbackQuery.from_user)
+        
+        # Debug: Print modified message attributes
+        print(f"Debug - modified_msg.from_user: {modified_msg.from_user}")
+        print(f"Debug - modified_msg.from_user.id: {modified_msg.from_user.id if modified_msg.from_user else 'None'}")
+        print(f"Debug - modified_msg.chat: {modified_msg.chat}")
         
         # Process the command through the play wrapper
         from AlexaMusic.utils.decorators.play import PlayWrapper
@@ -655,8 +669,7 @@ async def confirm_channel_play(client, CallbackQuery):
             fplay = True
         else:
             fplay = None
-        
-        # Call the core play command directly (bypassing decorator)
+          # Call the core play command directly (bypassing decorator)
         await play_commnd_core(
             client,
             modified_msg,
@@ -670,7 +683,10 @@ async def confirm_channel_play(client, CallbackQuery):
         )
         
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
         print(f"Error in confirm_channel_play: {e}")
+        print(f"Full traceback:\n{error_trace}")
         try:
             await CallbackQuery.answer(
                 f"⚠️ Error: {str(e)}",
