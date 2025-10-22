@@ -82,58 +82,58 @@ def PlayWrapper(command):
                 return await message.reply_text(_["str_1"])
             buttons = botplaylist_markup(_)
             return await message.reply_photo(
-                photo=PLAYLIST_IMG_URL,
-                caption=_["playlist_1"],
+                photo=PLAYLIST_IMG_URL,                caption=_["playlist_1"],
                 reply_markup=InlineKeyboardMarkup(buttons),
             )
 
-        # For channels, show confirmation button for anonymous users
-        if message.sender_chat and message.chat.type == "channel":
-            # Store play command data temporarily
-            import json
-            command_data = {
-                "chat_id": message.chat.id,
-                "message_id": message.id,
-                "command": message.text or message.caption,
-                "reply_to": message.reply_to_message.id if message.reply_to_message else None,
-            }
-            callback_data = f"confirm_play_{message.chat.id}_{message.id}"
-            
-            # Store in memory (you can use database if needed)
-            if not hasattr(app, 'pending_plays'):
-                app.pending_plays = {}
-            app.pending_plays[callback_data] = command_data
-            
-            upl = InlineKeyboardMarkup(
-                [
+        # Check if message is from a channel (sender_chat exists and equals to the chat)
+        if message.sender_chat:
+            # If sender_chat.id == chat.id, it means it's sent from the channel itself
+            if message.sender_chat.id == message.chat.id:
+                # This is a channel message, show confirmation button
+                import json
+                command_data = {
+                    "chat_id": message.chat.id,
+                    "message_id": message.id,
+                    "command": message.text or message.caption,
+                    "reply_to": message.reply_to_message.id if message.reply_to_message else None,
+                }
+                callback_data = f"confirm_play_{message.chat.id}_{message.id}"
+                
+                # Store in memory (you can use database if needed)
+                if not hasattr(app, 'pending_plays'):
+                    app.pending_plays = {}
+                app.pending_plays[callback_data] = command_data
+                
+                upl = InlineKeyboardMarkup(
                     [
-                        InlineKeyboardButton(
-                            text="✅ Confirm Play (Admin Only)",
-                            callback_data=callback_data,
-                        ),
+                        [
+                            InlineKeyboardButton(
+                                text="✅ Confirm Play (Admin Only)",
+                                callback_data=callback_data,
+                            ),
+                        ]
                     ]
-                ]
-            )
-            return await message.reply_text(
-                "🎵 **Channel Play Request**\n\n"
-                "This command was sent from a channel. An admin needs to confirm this play request.\n"
-                "Click the button below to confirm and use your account as the requester.",
-                reply_markup=upl
-            )
-        
-        # Skip sender_chat check for groups with anonymous admins
-        if message.sender_chat and message.chat.type != "channel":
-            upl = InlineKeyboardMarkup(
-                [
+                )
+                return await message.reply_text(
+                    "🎵 **Channel Play Request**\n\n"
+                    "This command was sent from a channel. An admin needs to confirm this play request.\n"
+                    "Click the button below to confirm and use your account as the requester.",
+                    reply_markup=upl
+                )
+            else:
+                # This is anonymous admin in a group
+                upl = InlineKeyboardMarkup(
                     [
-                        InlineKeyboardButton(
-                            text="How to Fix this? ",
-                            callback_data="AnonymousAdmin",
-                        ),
+                        [
+                            InlineKeyboardButton(
+                                text="How to Fix this? ",
+                                callback_data="AnonymousAdmin",
+                            ),
+                        ]
                     ]
-                ]
-            )
-            return await message.reply_text(_["general_4"], reply_markup=upl)
+                )
+                return await message.reply_text(_["general_4"], reply_markup=upl)
         
         chat_id = message.chat.id
         channel = None
