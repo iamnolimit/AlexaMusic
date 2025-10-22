@@ -598,7 +598,7 @@ async def confirm_channel_play(client, CallbackQuery):
         )        # Now process the play command with admin's user info
         # We'll create a modified message context
         class ModifiedMessage:
-            def __init__(self, original, admin_user, chat_id):
+            def __init__(self, original, admin_user, chat_id, stored_command):
                 # Use CallbackQuery.message.chat if original.chat is None
                 self.chat = original.chat if original.chat else CallbackQuery.message.chat
                 self.id = original.id
@@ -608,14 +608,8 @@ async def confirm_channel_play(client, CallbackQuery):
                 self.from_user = admin_user  # Use admin's info instead of channel
                 self.sender_chat = None  # Remove sender_chat to bypass channel check
                 
-                # Parse command manually if not available
-                if hasattr(original, 'command') and original.command:
-                    self.command = original.command
-                elif self.text:
-                    # Parse command from text
-                    self.command = self.text.split()
-                else:
-                    self.command = []
+                # Use stored command list from command_data
+                self.command = stored_command if stored_command else []
                 
                 # Copy other attributes that might be needed
                 if hasattr(original, 'entities'):
@@ -632,14 +626,20 @@ async def confirm_channel_play(client, CallbackQuery):
                 return await app.send_message(self.chat.id, *args, **kwargs)
             
             async def reply_photo(self, *args, **kwargs):
-                return await app.send_photo(self.chat.id, *args, **kwargs)# Create modified message with admin info
-        modified_msg = ModifiedMessage(original_msg, CallbackQuery.from_user, chat_id)
+                return await app.send_photo(self.chat.id, *args, **kwargs)        # Create modified message with admin info and stored command
+        modified_msg = ModifiedMessage(
+            original_msg, 
+            CallbackQuery.from_user, 
+            chat_id,
+            command_data.get("command_list", [])  # Pass stored command list
+        )
         
         # Debug: Print modified message attributes
         print(f"Debug - modified_msg.from_user: {modified_msg.from_user}")
         print(f"Debug - modified_msg.from_user.id: {modified_msg.from_user.id if modified_msg.from_user else 'None'}")
         print(f"Debug - modified_msg.chat: {modified_msg.chat}")
         print(f"Debug - modified_msg.chat.id: {modified_msg.chat.id if modified_msg.chat else 'None'}")
+        print(f"Debug - modified_msg.command: {modified_msg.command}")
         
         # Process the command through the play wrapper
         from AlexaMusic.utils.decorators.play import PlayWrapper
@@ -663,20 +663,9 @@ async def confirm_channel_play(client, CallbackQuery):
             else None
         )
         url = await YouTube.url(original_msg)
-        
-        # Determine video mode
-        if original_msg.command and original_msg.command[0][0] == "v":
-            video = True
-        else:
-            if original_msg.text and "-v" in original_msg.text:
-                video = True
-            else:
-                video = True if (original_msg.command and len(original_msg.command[0]) > 1 and original_msg.command[0][1] == "v") else None
-          # Determine force play
-        if original_msg.command and original_msg.command[0][-1] == "e":
-            fplay = True
-        else:
-            fplay = None
+          # Use stored video and fplay flags from command_data
+        video = command_data.get("video", None)
+        fplay = command_data.get("fplay", None)
           # Call the core play command directly (bypassing decorator)
         await play_commnd_core(
             client,

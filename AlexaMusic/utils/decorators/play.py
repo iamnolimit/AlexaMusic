@@ -84,9 +84,7 @@ def PlayWrapper(command):
             return await message.reply_photo(
                 photo=PLAYLIST_IMG_URL,                caption=_["playlist_1"],
                 reply_markup=InlineKeyboardMarkup(buttons),
-            )
-
-        # Check if message is from a channel (sender_chat exists and equals to the chat)
+            )        # Check if message is from a channel (sender_chat exists and equals to the chat)
         if message.sender_chat:
             # If sender_chat.id == chat.id, it means it's sent from the channel itself
             if message.sender_chat.id == message.chat.id:
@@ -95,8 +93,11 @@ def PlayWrapper(command):
                 command_data = {
                     "chat_id": message.chat.id,
                     "message_id": message.id,
-                    "command": message.text or message.caption,
+                    "command_text": message.text or message.caption,
+                    "command_list": message.command,  # Store parsed command list
                     "reply_to": message.reply_to_message.id if message.reply_to_message else None,
+                    "video": video,  # Store video flag
+                    "fplay": fplay,  # Store force play flag
                 }
                 callback_data = f"confirm_play_{message.chat.id}_{message.id}"
                 
