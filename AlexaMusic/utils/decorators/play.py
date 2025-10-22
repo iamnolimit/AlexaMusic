@@ -42,7 +42,8 @@ links = {}
 
 def PlayWrapper(command):
     async def wrapper(client, message):
-        if await is_maintenance() is False and message.from_user.id not in SUDOERS:
+        # Check maintenance mode, skip if from channel (no from_user)
+        if message.from_user and await is_maintenance() is False and message.from_user.id not in SUDOERS:
             return await message.reply_text(
                 "Bot is under maintenance. Please wait for some time..."
             )
@@ -76,14 +77,15 @@ def PlayWrapper(command):
             and video_telegram is None
             and url is None
             and len(message.command) < 2
-        ):
-            if "stream" in message.command:
+        ):            if "stream" in message.command:
                 return await message.reply_text(_["str_1"])
             buttons = botplaylist_markup(_)
             return await message.reply_photo(
                 photo=PLAYLIST_IMG_URL,
-                caption=_["playlist_1"],                reply_markup=InlineKeyboardMarkup(buttons),            )
-        
+                caption=_["playlist_1"],
+                reply_markup=InlineKeyboardMarkup(buttons),
+            )
+
         # For channels, show confirmation button for anonymous users
         if message.sender_chat and message.chat.type == "channel":
             # Store play command data temporarily
