@@ -11,6 +11,7 @@ import string
 
 from pyrogram import filters
 from pyrogram.types import InlineKeyboardMarkup, InputMediaPhoto, Message
+from pyrogram.enums import ChatMemberStatus
 from pytgcalls.exceptions import NoActiveGroupCall
 
 import config
@@ -527,12 +528,13 @@ async def confirm_channel_play(client, CallbackQuery):
         
         try:
             member = await app.get_chat_member(chat_id, user_id)
-            if member.status not in ["creator", "administrator"]:
+            if member.status not in [ChatMemberStatus.OWNER, ChatMemberStatus.ADMINISTRATOR]:
                 return await CallbackQuery.answer(
                     "⚠️ Only channel administrators can confirm play requests!",
                     show_alert=True
                 )
-        except Exception:
+        except Exception as e:
+            print(f"Error checking admin status: {e}")
             return await CallbackQuery.answer(
                 "⚠️ Unable to verify admin status!",
                 show_alert=True
