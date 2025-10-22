@@ -108,8 +108,7 @@ async def play_commnd_core(
                     user_name,
                     message.chat.id,
                     streamtype="telegram",
-                    forceplay=fplay,
-                )
+                    forceplay=fplay,                )
             except Exception as e:
                 ex_type = type(e).__name__
                 err = e if ex_type == "AssistantErr" else _["general_3"].format(ex_type)
@@ -169,7 +168,7 @@ async def play_commnd_core(
                     details = await YouTube.playlist(
                         url,
                         config.PLAYLIST_FETCH_LIMIT,
-                        message.from_user.id,
+                        user_id,
                     )
                 except Exception as e:
                     print(e)
@@ -377,8 +376,7 @@ async def play_commnd_core(
                 details,
                 chat_id,
                 user_name,
-                message.chat.id,
-                video=video,
+                message.chat.id,                video=video,
                 streamtype=streamtype,
                 spotify=spotify,
                 forceplay=fplay,
@@ -398,7 +396,7 @@ async def play_commnd_core(
             buttons = playlist_markup(
                 _,
                 ran_hash,
-                message.from_user.id,
+                user_id,
                 plist_type,
                 "c" if channel else "g",
                 "f" if fplay else "d",
@@ -407,15 +405,14 @@ async def play_commnd_core(
             await message.reply_photo(
                 photo=img,
                 caption=cap,
-                reply_markup=InlineKeyboardMarkup(buttons),
-            )
+                reply_markup=InlineKeyboardMarkup(buttons),            )
             return await play_logs(message, streamtype=f"Playlist : {plist_type}")
         else:
             if slider:
                 buttons = slider_markup(
                     _,
                     track_id,
-                    message.from_user.id,
+                    user_id,
                     query,
                     0,
                     "c" if channel else "g",
@@ -427,15 +424,14 @@ async def play_commnd_core(
                     caption=_["play_11"].format(
                         details["title"].title(),
                         details["duration_min"],
-                    ),
-                    reply_markup=InlineKeyboardMarkup(buttons),
+                    ),                    reply_markup=InlineKeyboardMarkup(buttons),
                 )
                 return await play_logs(message, streamtype=f"Searched on Youtube")
             else:
                 buttons = track_markup(
                     _,
                     track_id,
-                    message.from_user.id,
+                    user_id,
                     "c" if channel else "g",
                     "f" if fplay else "d",
                 )
