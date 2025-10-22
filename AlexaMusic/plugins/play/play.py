@@ -604,10 +604,18 @@ async def confirm_channel_play(client, CallbackQuery):
                 self.id = original.id
                 self.text = original.text
                 self.caption = original.caption
-                self.command = original.command if hasattr(original, 'command') else []
                 self.reply_to_message = original.reply_to_message
                 self.from_user = admin_user  # Use admin's info instead of channel
                 self.sender_chat = None  # Remove sender_chat to bypass channel check
+                
+                # Parse command manually if not available
+                if hasattr(original, 'command') and original.command:
+                    self.command = original.command
+                elif self.text:
+                    # Parse command from text
+                    self.command = self.text.split()
+                else:
+                    self.command = []
                 
                 # Copy other attributes that might be needed
                 if hasattr(original, 'entities'):
@@ -624,7 +632,7 @@ async def confirm_channel_play(client, CallbackQuery):
                 return await app.send_message(self.chat.id, *args, **kwargs)
             
             async def reply_photo(self, *args, **kwargs):
-                return await app.send_photo(self.chat.id, *args, **kwargs)        # Create modified message with admin info
+                return await app.send_photo(self.chat.id, *args, **kwargs)# Create modified message with admin info
         modified_msg = ModifiedMessage(original_msg, CallbackQuery.from_user, chat_id)
         
         # Debug: Print modified message attributes
