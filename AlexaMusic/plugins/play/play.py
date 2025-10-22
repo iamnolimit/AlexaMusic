@@ -595,12 +595,12 @@ async def confirm_channel_play(client, CallbackQuery):
             f"✅ **Play Confirmed by Admin**\n\n"
             f"👤 Requester: {CallbackQuery.from_user.mention}\n"
             f"🎵 Processing your request..."
-        )
-          # Now process the play command with admin's user info
+        )        # Now process the play command with admin's user info
         # We'll create a modified message context
         class ModifiedMessage:
-            def __init__(self, original, admin_user):
-                self.chat = original.chat
+            def __init__(self, original, admin_user, chat_id):
+                # Use CallbackQuery.message.chat if original.chat is None
+                self.chat = original.chat if original.chat else CallbackQuery.message.chat
                 self.id = original.id
                 self.text = original.text
                 self.caption = original.caption
@@ -624,14 +624,14 @@ async def confirm_channel_play(client, CallbackQuery):
                 return await app.send_message(self.chat.id, *args, **kwargs)
             
             async def reply_photo(self, *args, **kwargs):
-                return await app.send_photo(self.chat.id, *args, **kwargs)
-          # Create modified message with admin info
-        modified_msg = ModifiedMessage(original_msg, CallbackQuery.from_user)
+                return await app.send_photo(self.chat.id, *args, **kwargs)        # Create modified message with admin info
+        modified_msg = ModifiedMessage(original_msg, CallbackQuery.from_user, chat_id)
         
         # Debug: Print modified message attributes
         print(f"Debug - modified_msg.from_user: {modified_msg.from_user}")
         print(f"Debug - modified_msg.from_user.id: {modified_msg.from_user.id if modified_msg.from_user else 'None'}")
         print(f"Debug - modified_msg.chat: {modified_msg.chat}")
+        print(f"Debug - modified_msg.chat.id: {modified_msg.chat.id if modified_msg.chat else 'None'}")
         
         # Process the command through the play wrapper
         from AlexaMusic.utils.decorators.play import PlayWrapper
