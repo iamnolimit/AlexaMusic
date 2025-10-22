@@ -23,8 +23,8 @@ from config import BANNED_USERS
 from strings import get_command
 from AlexaMusic import app
 from AlexaMusic.misc import db
-from AlexaMusic.utils import Alexabin, get_channeplayCB, seconds_to_min
-from AlexaMusic.utils.database import get_cmode, is_active_chat, is_music_playing
+from AlexaMusic.utils import Alexabin, seconds_to_min
+from AlexaMusic.utils.database import is_active_chat, is_music_playing
 from AlexaMusic.utils.decorators.language import language, languageCB
 from AlexaMusic.utils.inline import queue_back_markup, queue_markup
 
@@ -52,18 +52,8 @@ def get_duration(playing):
 @app.on_message(filters.command(QUEUE_COMMAND) & filters.group & ~BANNED_USERS)
 @language
 async def ping_com(client, message: Message, _):
-    if message.command[0][0] == "c":
-        chat_id = await get_cmode(message.chat.id)
-        if chat_id is None:
-            return await message.reply_text(_["setting_12"])
-        try:
-            await app.get_chat(chat_id)
-        except Exception:
-            return await message.reply_text(_["cplay_4"])
-        cplay = True
-    else:
-        chat_id = message.chat.id
-        cplay = False
+    chat_id = message.chat.id
+    cplay = False
     if not await is_active_chat(chat_id):
         return await message.reply_text(_["general_6"])
     got = db.get(chat_id)
@@ -158,10 +148,7 @@ async def queued_tracks(client, CallbackQuery: CallbackQuery, _):
     callback_data = CallbackQuery.data.strip()
     callback_request = callback_data.split(None, 1)[1]
     what, videoid = callback_request.split("|")
-    try:
-        chat_id, channel = await get_channeplayCB(_, what, CallbackQuery)
-    except Exception:
-        return
+    chat_id = CallbackQuery.message.chat.id
     if not await is_active_chat(chat_id):
         return await CallbackQuery.answer(_["general_6"], show_alert=True)
     got = db.get(chat_id)
@@ -204,10 +191,7 @@ async def queued_tracks(client, CallbackQuery: CallbackQuery, _):
 async def queue_back(client, CallbackQuery: CallbackQuery, _):
     callback_data = CallbackQuery.data.strip()
     cplay = callback_data.split(None, 1)[1]
-    try:
-        chat_id, channel = await get_channeplayCB(_, cplay, CallbackQuery)
-    except Exception:
-        return
+    chat_id = CallbackQuery.message.chat.id
     if not await is_active_chat(chat_id):
         return await CallbackQuery.answer(_["general_6"], show_alert=True)
     got = db.get(chat_id)

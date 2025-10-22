@@ -42,7 +42,7 @@ from AlexaMusic.utils.database import is_served_user
 PLAY_COMMAND = get_command("PLAY_COMMAND")
 
 
-@app.on_message(filters.command(PLAY_COMMAND) & filters.group & ~BANNED_USERS)
+@app.on_message(filters.command(PLAY_COMMAND) & (filters.group | filters.channel) & ~BANNED_USERS)
 @PlayWrapper
 async def play_commnd(
     client,
@@ -62,8 +62,16 @@ async def play_commnd(
     slider = None
     plist_type = None
     spotify = None
-    user_id = message.from_user.id
-    user_name = message.from_user.first_name
+    
+    # Handle channel messages (from_user is None in channels)
+    if message.from_user:
+        user_id = message.from_user.id
+        user_name = message.from_user.first_name
+    else:
+        # For channel messages, use channel info
+        user_id = message.chat.id
+        user_name = message.chat.title or "Channel"
+    
     audio_telegram = (
         (message.reply_to_message.audio or message.reply_to_message.voice)
         if message.reply_to_message
@@ -213,7 +221,7 @@ async def play_commnd(
                 streamtype = "playlist"
                 plist_type = "spplay"
                 img = config.SPOTIFY_PLAYLIST_IMG_URL
-                cap = _["play_12"].format(message.from_user.first_name)
+                cap = _["play_12"].format(user_name)
             elif "album" in url:
                 try:
                     details, plist_id = await Spotify.album(url)
@@ -222,7 +230,7 @@ async def play_commnd(
                 streamtype = "playlist"
                 plist_type = "spalbum"
                 img = config.SPOTIFY_ALBUM_IMG_URL
-                cap = _["play_12"].format(message.from_user.first_name)
+                cap = _["play_12"].format(user_name)
             elif "artist" in url:
                 try:
                     details, plist_id = await Spotify.artist(url)
@@ -231,7 +239,7 @@ async def play_commnd(
                 streamtype = "playlist"
                 plist_type = "spartist"
                 img = config.SPOTIFY_ARTIST_IMG_URL
-                cap = _["play_12"].format(message.from_user.first_name)
+                cap = _["play_12"].format(user_name)
             else:
                 return await mystic.edit_text(_["play_17"])
         elif await Apple.valid(url):
@@ -251,7 +259,7 @@ async def play_commnd(
                     return await mystic.edit_text(_["play_3"])
                 streamtype = "playlist"
                 plist_type = "apple"
-                cap = _["play_13"].format(message.from_user.first_name)
+                cap = _["play_13"].format(user_name)
                 img = url
             else:
                 return await mystic.edit_text(_["play_16"])
@@ -311,10 +319,10 @@ async def play_commnd(
                 await stream(
                     _,
                     mystic,
-                    message.from_user.id,
+                    user_id,
                     url,
                     chat_id,
-                    message.from_user.first_name,
+                    user_name,
                     message.chat.id,
                     video=video,
                     streamtype="index",
@@ -511,6 +519,148 @@ async def play_music(client, CallbackQuery, _):
         err = e if ex_type == "AssistantErr" else _["general_3"].format(ex_type)
         return await mystic.edit_text(err)
     return await mystic.delete()
+
+
+@app.on_callback_query(filters.regex("confirm_play_") & ~BANNED_USERS)
+async def confirm_channel_play(client, CallbackQuery):
+    """Handle channel play confirmation from admin"""
+    try:
+        # Check if user is admin in the channel
+        chat_id = CallbackQuery.message.chat.id
+        user_id = CallbackQuery.from_user.id
+        
+        try:
+            member = await app.get_chat_member(chat_id, user_id)
+            if member.status not in ["creator", "administrator"]:
+                return await CallbackQuery.answer(
+                    "⚠️ Only channel administrators can confirm play requests!",
+                    show_alert=True
+                )
+        except Exception:
+            return await CallbackQuery.answer(
+                "⚠️ Unable to verify admin status!",
+                show_alert=True
+            )
+        
+        # Get stored command data
+        callback_data = CallbackQuery.data.strip()
+        if not hasattr(app, 'pending_plays') or callback_data not in app.pending_plays:
+            return await CallbackQuery.answer(
+                "⚠️ This play request has expired. Please send the command again.",
+                show_alert=True
+            )
+        
+        command_data = app.pending_plays[callback_data]
+        del app.pending_plays[callback_data]
+        
+        # Get language
+        from AlexaMusic.utils.database import get_lang
+        from strings import get_string
+        language = await get_lang(chat_id)
+        _ = get_string(language)
+        
+        # Create a fake message object with admin's info
+        import pyrogram
+        from pyrogram.types import Message as OriginalMessage
+        
+        # Get original message
+        try:
+            original_msg = await app.get_messages(chat_id, command_data["message_id"])
+        except Exception:
+            return await CallbackQuery.answer(
+                "⚠️ Original message not found!",
+                show_alert=True
+            )
+        
+        # Update the confirmation message
+        await CallbackQuery.edit_message_text(
+            f"✅ **Play Confirmed by Admin**\n\n"
+            f"👤 Requester: {CallbackQuery.from_user.mention}\n"
+            f"🎵 Processing your request..."
+        )
+        
+        # Now process the play command with admin's user info
+        # We'll create a modified message context
+        class ModifiedMessage:
+            def __init__(self, original, admin_user):
+                self.chat = original.chat
+                self.id = original.id
+                self.text = original.text
+                self.caption = original.caption
+                self.command = original.command if hasattr(original, 'command') else []
+                self.reply_to_message = original.reply_to_message
+                self.from_user = admin_user  # Use admin's info instead of channel
+                self.sender_chat = None  # Remove sender_chat to bypass channel check
+                
+            async def reply_text(self, *args, **kwargs):
+                return await app.send_message(self.chat.id, *args, **kwargs)
+            
+            async def reply_photo(self, *args, **kwargs):
+                return await app.send_photo(self.chat.id, *args, **kwargs)
+        
+        # Create modified message with admin info
+        modified_msg = ModifiedMessage(original_msg, CallbackQuery.from_user)
+        
+        # Process the command through the play wrapper
+        from AlexaMusic.utils.decorators.play import PlayWrapper
+        from AlexaMusic.utils.database import (
+            get_playmode,
+            get_playtype,
+            is_commanddelete_on,
+        )
+        from AlexaMusic import YouTube
+        
+        # Get necessary data
+        playmode = await get_playmode(chat_id)
+        audio_telegram = (
+            (original_msg.reply_to_message.audio or original_msg.reply_to_message.voice)
+            if original_msg.reply_to_message
+            else None
+        )
+        video_telegram = (
+            (original_msg.reply_to_message.video or original_msg.reply_to_message.document)
+            if original_msg.reply_to_message
+            else None
+        )
+        url = await YouTube.url(original_msg)
+        
+        # Determine video mode
+        if original_msg.command and original_msg.command[0][0] == "v":
+            video = True
+        else:
+            if original_msg.text and "-v" in original_msg.text:
+                video = True
+            else:
+                video = True if (original_msg.command and len(original_msg.command[0]) > 1 and original_msg.command[0][1] == "v") else None
+        
+        # Determine force play
+        if original_msg.command and original_msg.command[0][-1] == "e":
+            fplay = True
+        else:
+            fplay = None
+        
+        # Call the play command
+        await play_commnd(
+            client,
+            modified_msg,
+            _,
+            chat_id,
+            video,
+            None,  # channel
+            playmode,
+            url,
+            fplay,
+        )
+        
+    except Exception as e:
+        print(f"Error in confirm_channel_play: {e}")
+        try:
+            await CallbackQuery.answer(
+                f"⚠️ Error: {str(e)}",
+                show_alert=True
+            )
+        except:
+            pass
 
 
 @app.on_callback_query(filters.regex("AnonymousAdmin") & ~BANNED_USERS)

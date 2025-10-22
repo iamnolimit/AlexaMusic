@@ -12,7 +12,6 @@ as you want or you can collabe if you have new ideas.
 from pyrogram import filters
 
 from AlexaMusic import YouTube, app
-from AlexaMusic.utils.channelplay import get_channeplayCB
 from AlexaMusic.utils.decorators.language import languageCB
 from AlexaMusic.utils.stream.stream import stream
 from config import BANNED_USERS
@@ -29,10 +28,7 @@ async def play_live_stream(client, CallbackQuery, _):
             return await CallbackQuery.answer(_["playcb_1"], show_alert=True)
         except Exception:
             return
-    try:
-        chat_id, channel = await get_channeplayCB(_, cplay, CallbackQuery)
-    except Exception:
-        return
+    chat_id = CallbackQuery.message.chat.id
     video = True if mode == "v" else None
     user_name = CallbackQuery.from_user.first_name
     await CallbackQuery.message.delete()
@@ -40,9 +36,7 @@ async def play_live_stream(client, CallbackQuery, _):
         await CallbackQuery.answer()
     except Exception:
         pass
-    mystic = await CallbackQuery.message.reply_text(
-        _["play_2"].format(channel) if channel else _["play_1"]
-    )
+    mystic = await CallbackQuery.message.reply_text(_["play_1"])
     try:
         details, track_id = await YouTube.track(vidid, True)
     except Exception:

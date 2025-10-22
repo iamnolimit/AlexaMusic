@@ -82,10 +82,44 @@ def PlayWrapper(command):
             buttons = botplaylist_markup(_)
             return await message.reply_photo(
                 photo=PLAYLIST_IMG_URL,
-                caption=_["playlist_1"],
-                reply_markup=InlineKeyboardMarkup(buttons),
+                caption=_["playlist_1"],                reply_markup=InlineKeyboardMarkup(buttons),            )
+        
+        # For channels, show confirmation button for anonymous users
+        if message.sender_chat and message.chat.type == "channel":
+            # Store play command data temporarily
+            import json
+            command_data = {
+                "chat_id": message.chat.id,
+                "message_id": message.id,
+                "command": message.text or message.caption,
+                "reply_to": message.reply_to_message.id if message.reply_to_message else None,
+            }
+            callback_data = f"confirm_play_{message.chat.id}_{message.id}"
+            
+            # Store in memory (you can use database if needed)
+            if not hasattr(app, 'pending_plays'):
+                app.pending_plays = {}
+            app.pending_plays[callback_data] = command_data
+            
+            upl = InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            text="✅ Confirm Play (Admin Only)",
+                            callback_data=callback_data,
+                        ),
+                    ]
+                ]
             )
-        if message.sender_chat:
+            return await message.reply_text(
+                "🎵 **Channel Play Request**\n\n"
+                "This command was sent from a channel. An admin needs to confirm this play request.\n"
+                "Click the button below to confirm and use your account as the requester.",
+                reply_markup=upl
+            )
+        
+        # Skip sender_chat check for groups with anonymous admins
+        if message.sender_chat and message.chat.type != "channel":
             upl = InlineKeyboardMarkup(
                 [
                     [
@@ -97,26 +131,20 @@ def PlayWrapper(command):
                 ]
             )
             return await message.reply_text(_["general_4"], reply_markup=upl)
-        if message.command[0][0] == "c":
-            chat_id = await get_cmode(message.chat.id)
-            if chat_id is None:
-                return await message.reply_text(_["setting_12"])
-            try:
-                chat = await app.get_chat(chat_id)
-            except Exception:
-                return await message.reply_text(_["cplay_4"])
-            channel = chat.title
-        else:
-            chat_id = message.chat.id
-            channel = None
+        
+        chat_id = message.chat.id
+        channel = None
         playmode = await get_playmode(message.chat.id)
         playty = await get_playtype(message.chat.id)
-        if playty != "Everyone" and message.from_user.id not in SUDOERS:
+        
+        # Skip playtype check for channels or if from_user is None
+        if message.from_user and playty != "Everyone" and message.from_user.id not in SUDOERS:
             admins = adminlist.get(message.chat.id)
             if not admins:
                 return await message.reply_text(_["admin_18"])
             if message.from_user.id not in admins:
                 return await message.reply_text(_["play_4"])
+        
         if message.command[0][0] == "v":
             video = True
         else:
