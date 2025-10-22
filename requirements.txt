@@ -20,7 +20,7 @@ spotipy
 unidecode
 uvloop==0.21.0
 werkzeug
-git+https://github.com/yt-dlp/yt-dlp
+yt-dlp==2025.08.27
 https://github.com/KurimuzonAkuma/pyrogram/archive/dev.zip
 https://github.com/KSKOP69/youtube-search-python/archive/ksk.zip
 PyYAML~=6.0.3
