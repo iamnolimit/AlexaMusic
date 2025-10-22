@@ -699,7 +699,8 @@ async def anonymous_check(client, CallbackQuery):
 @languageCB
 async def play_playlists_command(client, CallbackQuery, _):
     callback_data = CallbackQuery.data.strip()
-    callback_request = callback_data.split(None, 1)[1]    (
+    callback_request = callback_data.split(None, 1)[1]
+    (
         videoid,
         user_id,
         ptype,
