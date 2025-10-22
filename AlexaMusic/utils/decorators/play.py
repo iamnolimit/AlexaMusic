@@ -77,7 +77,8 @@ def PlayWrapper(command):
             and video_telegram is None
             and url is None
             and len(message.command) < 2
-        ):            if "stream" in message.command:
+        ):            
+            if "stream" in message.command:
                 return await message.reply_text(_["str_1"])
             buttons = botplaylist_markup(_)
             return await message.reply_photo(
