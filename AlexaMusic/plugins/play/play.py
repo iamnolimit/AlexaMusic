@@ -39,9 +39,7 @@ from AlexaMusic.utils.database import is_served_user
 PLAY_COMMAND = get_command("PLAY_COMMAND")
 
 
-@app.on_message(filters.command(PLAY_COMMAND) & (filters.group | filters.channel) & ~BANNED_USERS)
-@PlayWrapper
-async def play_commnd(
+async def play_commnd_core(
     client,
     message: Message,
     _,
@@ -52,6 +50,7 @@ async def play_commnd(
     url,
     fplay,
 ):
+    """Core play function without decorator - can be called directly"""
     mystic = await message.reply_text(
         _["play_2"].format(channel) if channel else _["play_1"]
     )
@@ -449,6 +448,33 @@ async def play_commnd(
                 return await play_logs(message, streamtype=f"URL Searched Inline")
 
 
+@app.on_message(filters.command(PLAY_COMMAND) & (filters.group | filters.channel) & ~BANNED_USERS)
+@PlayWrapper
+async def play_commnd(
+    client,
+    message: Message,
+    _,
+    chat_id,
+    video,
+    channel,
+    playmode,
+    url,
+    fplay,
+):
+    """Main play command handler with decorator"""
+    return await play_commnd_core(
+        client,
+        message,
+        _,
+        chat_id,
+        video,
+        channel,
+        playmode,
+        url,
+        fplay,
+    )
+
+
 @app.on_callback_query(filters.regex("MusicStream") & ~BANNED_USERS)
 @languageCB
 async def play_music(client, CallbackQuery, _):
@@ -460,10 +486,8 @@ async def play_music(client, CallbackQuery, _):
             return await CallbackQuery.answer(_["playcb_1"], show_alert=True)
         except Exception:
             return
-    try:
-        chat_id, channel = await get_channeplayCB(_, cplay, CallbackQuery)
-    except Exception:
-        return
+    chat_id = CallbackQuery.message.chat.id
+    channel = None
     user_name = CallbackQuery.from_user.first_name
     try:
         await CallbackQuery.message.delete()
@@ -630,15 +654,14 @@ async def confirm_channel_play(client, CallbackQuery):
                 video = True
             else:
                 video = True if (original_msg.command and len(original_msg.command[0]) > 1 and original_msg.command[0][1] == "v") else None
-        
-        # Determine force play
+          # Determine force play
         if original_msg.command and original_msg.command[0][-1] == "e":
             fplay = True
         else:
             fplay = None
         
-        # Call the play command
-        await play_commnd(
+        # Call the core play command directly (bypassing decorator)
+        await play_commnd_core(
             client,
             modified_msg,
             _,
@@ -676,8 +699,7 @@ async def anonymous_check(client, CallbackQuery):
 @languageCB
 async def play_playlists_command(client, CallbackQuery, _):
     callback_data = CallbackQuery.data.strip()
-    callback_request = callback_data.split(None, 1)[1]
-    (
+    callback_request = callback_data.split(None, 1)[1]    (
         videoid,
         user_id,
         ptype,
@@ -690,10 +712,8 @@ async def play_playlists_command(client, CallbackQuery, _):
             return await CallbackQuery.answer(_["playcb_1"], show_alert=True)
         except Exception:
             return
-    try:
-        chat_id, channel = await get_channeplayCB(_, cplay, CallbackQuery)
-    except Exception:
-        return
+    chat_id = CallbackQuery.message.chat.id
+    channel = None
     user_name = CallbackQuery.from_user.first_name
     await CallbackQuery.message.delete()
     try:
